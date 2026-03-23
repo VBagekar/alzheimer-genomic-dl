@@ -205,3 +205,31 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# === Genomic Data (never commit raw patient data) ===
+data/raw/
+data/processed/
+*.vcf
+*.bam
+*.sam
+*.fastq
+*.fasta
+*.fa
+*.gz
+
+# === Model checkpoints (too large for GitHub) ===
+models/*.pt
+models/*.h5
+models/*.pkl
+
+# === ML experiment artifacts ===
+results/
+mlruns/
+wandb/
+
+# === Environment ===
+.env
+*.env
+__pycache__/
+.pytest_cache/
+.vscode/settings.json
