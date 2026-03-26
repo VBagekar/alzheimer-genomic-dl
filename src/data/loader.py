@@ -1,4 +1,3 @@
-# src/data/loader.py
 
 import GEOparse
 import pandas as pd
@@ -9,10 +8,7 @@ RAW_DATA_PATH = "data/raw"
 PROCESSED_DATA_PATH = "data/processed"
 
 def load_gse48350():
-    """
-    Load GSE48350 dataset using GEOparse.
-    Downloads automatically if not cached.
-    """
+    
     print("Loading GSE48350 — this may take a few minutes first time...")
     
     gse = GEOparse.get_GEO(
@@ -25,15 +21,10 @@ def load_gse48350():
 
 
 def extract_expression_and_labels(gse):
-    """
-    Extract expression matrix and AD/Control labels
-    from the GSE object.
-    """
+    
     print("\n=== Dataset Overview ===")
     print(f"Number of samples:  {len(gse.gsms)}")
     print(f"Number of GPLs:     {len(gse.gpls)}")
-    
-    # --- Extract sample metadata (labels live here) ---
     metadata = []
     for gsm_name, gsm in gse.gsms.items():
         meta = gsm.metadata
@@ -67,7 +58,6 @@ def quick_peek(gse):
 
 
 if __name__ == "__main__":
-    # Run this directly to explore
     gse = load_gse48350()
     meta_df = extract_expression_and_labels(gse)
     quick_peek(gse)
