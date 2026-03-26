@@ -1,66 +1,111 @@
-
 import GEOparse
 import pandas as pd
 import numpy as np
 import os
 
 RAW_DATA_PATH = "data/raw"
-PROCESSED_DATA_PATH = "data/processed"
 
-def load_gse48350():
-    
-    print("Loading GSE48350 — this may take a few minutes first time...")
-    
-    gse = GEOparse.get_GEO(
-        geo="GSE48350",
-        destdir=RAW_DATA_PATH,
-        silent=False
-    )
-    
-    return gse
+REGION_KEYWORDS = [
+    "hippocampus",
+    "entorhinal cortex",
+    "superior frontal gyrus",
+    "postcentral gyrus",
+    "post-central gyrus",
+]
 
 
-def extract_expression_and_labels(gse):
-    
-    print("\n=== Dataset Overview ===")
-    print(f"Number of samples:  {len(gse.gsms)}")
-    print(f"Number of GPLs:     {len(gse.gpls)}")
-    metadata = []
+def load_gse(geo_id):
+    print(f"Loading {geo_id}...")
+    return GEOparse.get_GEO(geo=geo_id, destdir=RAW_DATA_PATH, silent=True)
+
+
+def region_matches(source_str):
+    source_lower = source_str.lower()
+    return any(kw in source_lower for kw in REGION_KEYWORDS)
+
+
+def extract_gse48350(gse):
+    records = []
     for gsm_name, gsm in gse.gsms.items():
-        meta = gsm.metadata
-        metadata.append({
-            "sample_id":    gsm_name,
-            "title":        meta.get("title", [""])[0],
-            "source":       meta.get("source_name_ch1", [""])[0],
-            "description":  meta.get("description", [""])[0],
-            "disease":      meta.get("characteristics_ch1", [""])[0],
+        disease_val = gsm.metadata.get("characteristics_ch1", [""])[0]
+        source_val  = gsm.metadata.get("source_name_ch1",    [""])[0]
+
+        if disease_val.startswith("gender:"):
+            continue
+        if not region_matches(source_val):
+            continue
+
+        if disease_val.endswith(", C"):
+            label = 0
+        elif disease_val.endswith(", AA"):
+            label = 1
+        else:
+            continue
+
+        records.append({
+            "sample_id": gsm_name,
+            "label":     label,
+            "source":    source_val,
+            "dataset":   "GSE48350"
         })
-    
-    meta_df = pd.DataFrame(metadata)
-    
-    print("\n=== Sample Metadata Preview ===")
-    print(meta_df.head(10))
-    print(f"\nUnique sources: {meta_df['source'].unique()}")
-    print(f"Unique disease values: {meta_df['disease'].unique()}")
-    
-    return meta_df
+
+    df = pd.DataFrame(records).set_index("sample_id")
+    print(f"GSE48350 — {len(df)} samples after region filter | AD: {df.label.sum()} | Control: {(df.label==0).sum()}")
+    return df
 
 
-def quick_peek(gse):
-    """
-    Peek at the raw expression values of first sample.
-    """
-    first_sample = list(gse.gsms.values())[0]
-    print("\n=== First Sample Expression Data (first 5 rows) ===")
-    print(first_sample.table.head())
-    print(f"\nShape: {first_sample.table.shape}")
-    print("Columns:", first_sample.table.columns.tolist())
+def extract_gse5281(gse):
+    records = []
+    for gsm_name, gsm in gse.gsms.items():
+        source_val = gsm.metadata.get("source_name_ch1", [""])[0]
+        chars      = gsm.metadata.get("characteristics_ch1", [])
+
+        if not region_matches(source_val):
+            continue
+
+        label = None
+        for c in chars:
+            c_lower = c.lower()
+            if "control" in c_lower or "normal" in c_lower or "healthy" in c_lower:
+                label = 0
+                break
+            if "alzheimer" in c_lower or " ad" in c_lower:
+                label = 1
+                break
+
+        if label is None:
+            if "incipient" in source_val.lower() or "moderate" in source_val.lower() or "severe" in source_val.lower():
+                label = 1
+            elif "normal" in source_val.lower():
+                label = 0
+
+        if label is None:
+            continue
+
+        records.append({
+            "sample_id": gsm_name,
+            "label":     label,
+            "source":    source_val,
+            "dataset":   "GSE5281"
+        })
+
+    df = pd.DataFrame(records).set_index("sample_id")
+    print(f"GSE5281  — {len(df)} samples after region filter | AD: {df.label.sum()} | Control: {(df.label==0).sum()}")
+    return df
 
 
-if __name__ == "__main__":
-    gse = load_gse48350()
-    meta_df = extract_expression_and_labels(gse)
-    quick_peek(gse)
-    
-    print("\n✅ Dataset loaded successfully!")
-    print("Next: preprocessing.py will clean and encode this data")
+def build_expression_matrix(gse, sample_ids):
+    print(f"Building expression matrix for {len(sample_ids)} samples...")
+    expr_dict = {}
+
+    for i, gsm_name in enumerate(sample_ids):
+        if gsm_name not in gse.gsms:
+            continue
+        expr_dict[gsm_name] = gse.gsms[gsm_name].table.set_index("ID_REF")["VALUE"]
+
+        if (i + 1) % 50 == 0:
+            print(f"  {i+1}/{len(sample_ids)}")
+
+    expr_df = pd.DataFrame(expr_dict).T
+    expr_df.index.name = "sample_id"
+    return expr_df
