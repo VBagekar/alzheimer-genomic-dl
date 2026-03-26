@@ -14,6 +14,6 @@ if torch.cuda.is_available():
     x = torch.randn(1000, 1000).cuda()
     y = torch.randn(1000, 1000).cuda()
     z = torch.mm(x, y)
-    print(f"Matrix multiply on GPU: ✅ Shape {z.shape}")
+    print(f"Matrix multiply on GPU:  Shape {z.shape}")
 else:
-    print("⚠️  No GPU detected — training will use CPU")
+    print(" No GPU detected — training will use CPU")
