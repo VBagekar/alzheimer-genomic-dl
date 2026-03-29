@@ -45,7 +45,7 @@ conda activate alzheimer-genomic
 *(To be updated as experiments progress)*
 
 ## 👤 Author
-YOUR NAME — [LinkedIn](#) | [GitHub](#)
+Vaishnavi Bagekar
 
 ## 📄 License
 MIT License
